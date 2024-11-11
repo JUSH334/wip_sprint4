@@ -58,17 +58,22 @@ class SimpleGameMode(BaseGameMode):
     """Implements the simple game mode where the first SOS wins."""
 
     def make_move(self, row, col, character):
-        if super().make_move(row, col, character):
-            self.game_manager.gui.board.update_button(row, col, character)
-            if self.check_sos(row, col) > 0:
-                self.end_game_with_winner()
-                return {"result": "win", "winner": self.game_manager.current_player}
-            elif self.game_manager.is_board_full():
-                self.end_game_with_draw()
-                return {"result": "draw"}
-            else:
-                return {"result": "next_turn"}
-        return False
+        if not super().make_move(row, col, character):
+            # Invalid move feedback
+            self.game_manager.gui.turn_label.config(text="Invalid move. Try again.")
+            return
+
+        # Update the board display
+        self.game_manager.gui.board.update_button(row, col, character)
+
+        # Check for win or draw conditions
+        if self.check_sos(row, col) > 0:
+            self.end_game_with_winner()
+        elif self.game_manager.is_board_full():
+            self.end_game_with_draw()
+        else:
+            # Switch turn for next player
+            self.game_manager.switch_turn()
 
     def end_game_with_winner(self):
         """Declare the current player as winner and end the game."""
@@ -101,22 +106,32 @@ class GeneralGameMode(BaseGameMode):
         self.game_manager.gui.red_score_label.config(text=f"Red SOS: {self.sos_count['Red']}")
 
     def make_move(self, row, col, character):
-        if super().make_move(row, col, character):
-            self.game_manager.gui.board.update_button(row, col, character)
-            sos_formed = self.check_sos(row, col)
-            if sos_formed > 0:
-                self.sos_count[self.game_manager.current_player] += sos_formed
-                self.update_score_display()
-                if self.game_manager.is_board_full():
-                    self.end_game_based_on_score()
-                    return {"result": "end"}
+        if not super().make_move(row, col, character):
+            # Invalid move feedback
+            self.game_manager.gui.turn_label.config(text="Invalid move. Try again.")
+            return
+
+        # Update the board display
+        self.game_manager.gui.board.update_button(row, col, character)
+
+        # Check for SOS formations
+        sos_formed = self.check_sos(row, col)
+        if sos_formed > 0:
+            # Update SOS count and display
+            self.sos_count[self.game_manager.current_player] += sos_formed
+            self.update_score_display()
+
+            # Handle extra turn if the board isn't full
+            if not self.game_manager.is_board_full():
                 self.handle_extra_turn(sos_formed)
-                return {"result": "extra_turn"}
-            if self.game_manager.is_board_full():
-                self.end_game_based_on_score()
-                return {"result": "end"}
-            return {"result": "next_turn"}
-        return False
+                return
+
+        # Check for game end conditions
+        if self.game_manager.is_board_full():
+            self.end_game_based_on_score()
+        else:
+            # Switch turn for next player
+            self.game_manager.switch_turn()
 
     def update_score_display(self):
         """Updates the SOS count labels."""
@@ -130,16 +145,13 @@ class GeneralGameMode(BaseGameMode):
         )
 
     def end_game_based_on_score(self):
-        """Determine the winner based on SOS count or declare a draw."""
+        """Determine winner based on SOS count or declare a draw."""
         blue_score, red_score = self.sos_count["Blue"], self.sos_count["Red"]
-
         if blue_score > red_score:
             self.game_manager.gui.turn_label.config(text="Blue wins!")
-            self.game_manager.end_game()
         elif red_score > blue_score:
             self.game_manager.gui.turn_label.config(text="Red wins!")
-            self.game_manager.end_game()
         else:
-            # Call the common draw function from BaseGameMode
-            self.end_game_with_draw()
+            self.end_game_with_draw()  # Draw handled in BaseGameMode
+        self.game_manager.end_game()
 

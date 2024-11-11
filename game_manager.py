@@ -30,30 +30,12 @@ class GameManager:
 
     def on_board_click(self, row, col):
         """Handles a click on the board and delegates the move to the active game mode."""
-        # Determine the character based on the current player's selection
         character_choice = (self.gui.blue_controls.get_choice()
                             if self.current_player == "Blue"
                             else self.gui.red_controls.get_choice())
 
-        # Make the move through the current game mode
-        result = self.make_move(row, col, character_choice)
-
-        # Process the result
-        if result:
-            if result["result"] == "win":
-                self.gui.turn_label.config(text=f"{result['winner']} wins!")
-                self.end_game()
-            elif result["result"] == "draw":
-                self.gui.turn_label.config(text="The game is a draw! No SOS was created.")
-                self.end_game()
-            elif result["result"] == "next_turn":
-                self.switch_turn()
-            elif result["result"] == "extra_turn":
-                # Use the handle_extra_turn method from the current game mode to manage extra turns
-                self.mode.handle_extra_turn(sos_formed=result.get("sos_formed", 1))
-        else:
-            # Optional: Inform the user of an invalid move if the result is False
-            self.gui.turn_label.config(text="Invalid move. Try again.")
+        # Delegate to game mode for all processing
+        self.make_move(row, col, character_choice)
 
     def reset_game(self, board_size, game_mode):
         """Resets the game with a new board size and game mode."""

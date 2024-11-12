@@ -1,5 +1,7 @@
 # game_modes.py
 
+from player import ComputerPlayer
+
 class BaseGameMode:
     """Base class for common game mode functionality."""
 
@@ -54,6 +56,8 @@ class BaseGameMode:
         self.game_manager.gui.turn_label.config(text="The game is a draw!")
         self.game_manager.end_game()
 
+
+
 class SimpleGameMode(BaseGameMode):
     """Implements the simple game mode where the first SOS wins."""
 
@@ -77,7 +81,7 @@ class SimpleGameMode(BaseGameMode):
 
     def end_game_with_winner(self):
         """Declare the current player as winner and end the game."""
-        self.game_manager.gui.turn_label.config(text=f"{self.game_manager.current_player} wins!")
+        self.game_manager.gui.turn_label.config(text=f"{self.game_manager.current_player.color} wins!")
         self.game_manager.end_game()
 
     def end_game_with_draw(self):
@@ -117,16 +121,29 @@ class GeneralGameMode(BaseGameMode):
         # Check for SOS formations
         sos_formed = self.check_sos(row, col)
         if sos_formed > 0:
-            # Update SOS count and display
-            self.sos_count[self.game_manager.current_player] += sos_formed
+            player_color = self.game_manager.current_player.color
+            self.sos_count[player_color] += sos_formed
             self.update_score_display()
 
-            # Handle extra turn if the board isn't full
-            if not self.game_manager.is_board_full():
-                self.handle_extra_turn(sos_formed)
+            # If the board is full after the SOS, end the game immediately
+            if self.game_manager.is_board_full():
+                self.end_game_based_on_score()
                 return
 
-        # Check for game end conditions
+            # Display extra turn message for SOS formation
+            self.game_manager.gui.turn_label.config(
+                text=f"{self.game_manager.current_player.color} formed {sos_formed} SOS! They get an extra turn!"
+            )
+
+            # If the current player is a ComputerPlayer, make an extra move automatically
+            if isinstance(self.game_manager.current_player, ComputerPlayer):
+                self.game_manager.gui.root.after(4000, lambda: self.game_manager.current_player.make_move(self))
+                return  # Exit here to let the delayed move take effect
+            else:
+                # For HumanPlayer, allow them to take the extra turn manually (do not switch turn)
+                return
+
+                # Check for game end conditions
         if self.game_manager.is_board_full():
             self.end_game_based_on_score()
         else:
@@ -141,8 +158,11 @@ class GeneralGameMode(BaseGameMode):
     def handle_extra_turn(self, sos_formed):
         """Notify player of an extra turn for forming SOS."""
         self.game_manager.gui.turn_label.config(
-            text=f"{self.game_manager.current_player} formed {sos_formed} SOS! They get an extra turn!"
+            text=f"{self.game_manager.current_player.color} formed {sos_formed} SOS! They get an extra turn!"
         )
+
+        # If the current player is a ComputerPlayer, make the move automatically
+        self.extra_turn = True
 
     def end_game_based_on_score(self):
         """Determine winner based on SOS count or declare a draw."""

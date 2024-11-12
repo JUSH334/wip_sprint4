@@ -2,6 +2,8 @@ import tkinter as tk
 from game_manager import GameManager
 from player_controls import PlayerControls
 from game_board import GameBoard
+from player import HumanPlayer
+from player import ComputerPlayer
 
 
 class SOSGameGUI:
@@ -79,6 +81,18 @@ class SOSGameGUI:
                                              validate="key", validatecommand=vcmd, width=3)
         self.board_size_spinbox.grid(row=0, column=3, padx=5, pady=1, sticky="w")
 
+        # Player Type Selection for Blue Player
+        tk.Label(parent, text="Blue Player").grid(row=1, column=0, padx=5, pady=1, sticky="w")
+        self.blue_player_type = tk.StringVar(value="Human")
+        tk.Radiobutton(parent, text="Human", variable=self.blue_player_type, value="Human").grid(row=1, column=1)
+        tk.Radiobutton(parent, text="Computer", variable=self.blue_player_type, value="Computer").grid(row=1, column=2)
+
+        # Player Type Selection for Red Player
+        tk.Label(parent, text="Red Player").grid(row=2, column=0, padx=5, pady=1, sticky="w")
+        self.red_player_type = tk.StringVar(value="Human")
+        tk.Radiobutton(parent, text="Human", variable=self.red_player_type, value="Human").grid(row=2, column=1)
+        tk.Radiobutton(parent, text="Computer", variable=self.red_player_type, value="Computer").grid(row=2, column=2)
+
     def setup_bottom_controls(self, parent):
         """Sets up the bottom controls like Start/End game button and Current Turn label."""
         self.start_button = tk.Button(parent, text="Start Game", command=self.toggle_game)
@@ -106,8 +120,12 @@ class SOSGameGUI:
         selected_mode = self.radio_var.get().split()[0]  # "Simple" or "General"
         self.board_size = self.board_size_var.get()
 
-        # Set the game mode in GameManager based on selection
-        self.game_manager.reset_game(self.board_size, selected_mode)
+        # Retrieve player type selections
+        blue_type = self.blue_player_type.get()  # "Human" or "Computer"
+        red_type = self.red_player_type.get()  # "Human" or "Computer"
+
+        # Set up the game manager with player types and game mode
+        self.game_manager.reset_game(self.board_size, selected_mode, blue_type, red_type)
 
         # Display the chosen game mode and board size
         self.turn_label.config(text=f"Game Mode: {selected_mode}, Board Size: {self.board_size}x{self.board_size}")
@@ -121,10 +139,14 @@ class SOSGameGUI:
         self.enable_gameplay_controls()
 
         # Update turn label to show initial player turn after mode and size
-        initial_turn = self.game_manager.get_current_player()
+        initial_turn = self.game_manager.current_player.color
         self.turn_label.config(
             text=f"Game Mode: {selected_mode}, Board Size: {self.board_size}x{self.board_size}\nCurrent turn: {initial_turn}")
         self.turn_label.grid()
+
+        # Trigger the first move if the current player is a ComputerPlayer
+        if isinstance(self.game_manager.current_player, ComputerPlayer):
+            self.game_manager.current_player.make_move(self.game_manager.mode)
 
     def end_game(self):
         self.is_game_active = False
@@ -190,7 +212,7 @@ class SOSGameGUI:
         """Adjusts the window size based on the board size."""
         cell_size = 50
         board_pixel_size = board_size * cell_size
-        max_window_size = 600
+        max_window_size = 700
         self.root.geometry(
             f"{min(board_pixel_size + 100, max_window_size)}x{min(board_pixel_size + 100, max_window_size)}")
 
